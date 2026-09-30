@@ -34,11 +34,10 @@ async def post_init(application: Application) -> None:
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send welcoming message when /start command is issued."""
     await update.message.reply_text(
-        "👋 Welcome! Send or forward any video or document file, "
-        "and I will convert it to **MP4** for you.\n\n"
-        "Use /help to see full instructions."
+        "👋 Welcome to Media to MP4 Bot!\n\n"
+        "Send or forward any video file (MKV, AVI, WEBM, MOV, FLV) or document here, "
+        "and I will convert it to MP4 format for you instantly."
     )
 
 
