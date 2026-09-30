@@ -21,11 +21,48 @@ logger = logging.getLogger(__name__)
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send welcoming message when /start command is issued."""
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Respond to /start command."""
     await update.message.reply_text(
-        "👋 Welcome! Send or forward any video or document file, "
-        "and I will convert it to **MP4** for you."
+        "👋 Welcome to Video to MP4 Converter Bot!\n\n"
+        "Send or forward any video file or document (MKV, AVI, MOV, WEBM, FLV), "
+        "and I will convert it to standard MP4 format for you.\n\n"
+        "Commands:\n"
+        "• /start - Restart or show welcome message\n"
+        "• /help - Get instructions and supported formats\n"
+        "• /settings - View current bot settings"
+    )
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Respond to /help command."""
+    await update.message.reply_text(
+        "📖 **How to use this bot:**\n\n"
+        "1. Send or forward a video file directly to this chat.\n"
+        "2. Wait while the bot downloads and processes your video.\n"
+        "3. Receive your converted MP4 file ready to play or download.\n\n"
+        "🎬 **Supported Formats:**\n"
+        "MKV, AVI, MOV, WEBM, FLV, WMV, 3GP, and uncompressed video documents.\n\n"
+        "⚠️ **Note:** Maximum file size supported is 50 MB due to Telegram Bot API limits."
+    )
+
+
+async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Respond to /settings command."""
+    await update.message.reply_text(
+        "⚙️ **Bot Settings**\n\n"
+        "• Output Codec: H.264 (libx264)\n"
+        "• Audio Codec: AAC\n"
+        "• Preset: Fast\n"
+        "• Output Format: MP4\n\n"
+        "All incoming videos are automatically converted using these standard settings."
+    )
+
+
+async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Respond to unrecognized commands."""
+    await update.message.reply_text(
+        "❓ Unknown command. Please use /help to see the list of available commands or simply send a video file to convert."
     )
 
 
@@ -41,6 +78,11 @@ async def process_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         file_obj = message.document
     else:
         await message.reply_text("Please send a valid video file.")
+        return
+
+    # Check file size limit (50 MB Telegram Bot API download limit)
+    if file_obj.file_size and file_obj.file_size > 50 * 1024 * 1024:
+        await message.reply_text("❌ File too large! Telegram Bot API allows files up to 50 MB only.")
         return
 
     status_msg = await message.reply_text("📥 Downloading file...")
@@ -85,7 +127,7 @@ async def process_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await status_msg.edit_text("❌ Failed to convert video. Please check the file format.")
     except Exception as e:
         logger.error(f"Error processing video: {e}")
-        await status_msg.edit_text("❌ An unexpected error occurred.")
+        await status_msg.edit_text("❌ An unexpected error occurred during processing.")
     finally:
         # Clean up local temporary files
         for path in (input_path, output_path):
@@ -99,8 +141,16 @@ def main() -> None:
 
     app = Application.builder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
+    # Standard Commands
+    app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("settings", settings_command))
+
+    # Media processing handler
     app.add_handler(MessageHandler(filters.VIDEO | filters.Document.ALL, process_video))
+
+    # Fallback for unrecognized commands
+    app.add_handler(MessageHandler(filters.COMMAND, unknown_command))
 
     logger.info("Bot started and listening...")
     app.run_polling()
